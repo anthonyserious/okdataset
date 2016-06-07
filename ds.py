@@ -1,5 +1,7 @@
-from itertools import groupby
+from cloud.serialization.cloudpickle import dumps as pickle_dumps
 from collections import namedtuple
+from itertools import groupby
+import pickle
 
 """
 DataSet context
@@ -42,13 +44,13 @@ class ChainableList(list):
     def reduce(self, f):
         return ChainableList(reduce(f, self[:]))
 
-    def head(n=5):
+    def head(self, n=5):
         return ChainableList(self[:n])
 
-    def tail(n=5):
+    def tail(self, n=5):
         return ChainableList(self[:n])
 
-    def dict(f):
+    def dict(self,f):
         return dict(f(x) for x in self[:])
 
     # list items must be tuples of the form (key, ChainableList(values))
@@ -63,11 +65,26 @@ class ChainableList(list):
 
         return res
 
+# Trivial cache for just bulding this thing out
+class Cache(object):
+    def __init__(self):
+        self.cache = {}
+
+    def pushBuffer(self, dataSetKey, offset, buf):
+        if dataSetKey not in self.cache:
+            self.cache[dataSetKey] = {}
+        
+        self.cache[dataSetKey][offset] = buf
+        
+    def getBuffer(self, dataSetKey, offset):
+        return self.cache[dataSetKey][offset]
+
 """
 Worker
 """
 class Worker(object):
-    def __init__(self):
+    def __init__(self, cache):
+        self.cache = cache
         self.offsets = {}
 
     def pushOffset(self, dataSetKey, offset):
@@ -79,6 +96,12 @@ class Worker(object):
     def clearKey(self, dataSetKey):
         if dataSetKey in self.offsets:
             del self.offsets[dataSetKey]
+    
+    def apply(self, method, f, dataSetKey):
+        for offset in self.offsets.get(dataSetKey, []):
+            buf = self.cache.getBuffer(dataSetKey, offset)
+            #print buf
+            yield getattr(buf, method)(pickle.loads(f))
 
 """
 DataSet
@@ -98,18 +121,29 @@ class DataSet(ChainableList):
         self.buffers = self.dsLen / self.defaults.dsBufferSize
         self.buffers = self.buffers + 1 if self.dsLen % self.defaults.dsBufferSize > 0 else self.buffers
         
-        for workerId in xrange(0, self.defaults.workers):
-            self.workers[workerId] = Worker()
+        for i in xrange(0, self.buffers):
+            start = self.defaults.dsBufferSize * i
+            end = self.defaults.dsBufferSize * (i + 1)
+            
+            self.context["cache"].pushBuffer(key, i, ChainableList(clist[start:end]))
         
-            for i in xrange(0, self.buffers):
+        for workerId in xrange(0, self.defaults.workers):
+            self.workers[workerId] = Worker(context["cache"])
+        
+            for i in xrange(1, self.buffers + 1):
                 if i % (workerId + 1) == 0:
-                    self.workers[workerId].pushOffset(key, i)
+                    self.workers[workerId].pushOffset(key, i - 1)
     
     def _pushWorker(self, workerId, clist):
         self.workers[workerId] = clist
-        
+    
     def map(self, f):
-        return ChainableList(map(f, self[:]))
+        pf = pickle_dumps(f)
+        
+        for w in self.workers.keys():
+            worker = self.workers[w]
+            for r in worker.apply("map", pf, self.key):
+                print r
 
     def filter(self, f):
         return ChainableList(filter(f, self[:]))
@@ -128,17 +162,3 @@ class DataSet(ChainableList):
             res.append((key, reduce(f, values)))
         
         return res
-
- 
-l = ChainableList(xrange(0, 10000))
-ds = DataSet({}, "foo", l)
-
-ds.workers[7].offsets
-
-
-
-
-
-
-
-
