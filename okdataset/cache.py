@@ -11,7 +11,7 @@ class Cache(object):
     def getBuffer(self, dsLabel, offset):
         return self.r.hget(dsLabel, offset)
 
-    def uniqueId(self, key, amount=1):
+    def incr(self, key, amount=1):
         return self.r.incr(key, amount=amount)
 
     def getKeys(self, dsLabel):

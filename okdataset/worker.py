@@ -1,27 +1,45 @@
 from okdataset.cache import Cache
+from cloud.serialization.cloudpickle import dumps as pickle_dumps
+
+import pickle
+import zmq
 
 """
 Worker
 """
 class Worker(object):
     def __init__(self, config):
-        self.config = config
         self.offsets = {}
-        self.cache = Cache(config["redis"])
-
-    def pushOffset(self, dataSetKey, offset):
-        if dataSetKey not in self.offsets:
-            self.offsets[dataSetKey] = []
+        cache = Cache(config["cache"]["redis"])
         
-        self.offsets[dataSetKey].append(offset)
-    
-    def clearKey(self, dataSetKey):
-        if dataSetKey in self.offsets:
-            del self.offsets[dataSetKey]
+        cluster = config["cluster"]
+        
+        context = zmq.Context()
+        
+        receiver = context.socket(zmq.PULL)
+        receiver.connect("tcp://" + cluster["send"]["host"] + ":" + str(cluster["send"]["port"]))
+        
+        returner = context.socket(zmq.PUSH)
+        returner.connect("tcp://" + cluster["return"]["host"] + ":" + str(cluster["return"]["port"]))
 
-    def apply(self, method, f, dsLabel, intermediaryLabel):
-        for offset in self.offsets.get(dsLabel, []):
-            buf = self.cache.getBuffer(dsLabel, offset)
-            #print buf
-            yield getattr(buf, method)(pickle.loads(f))
+        while True:
+            msg = pickle.loads(receiver.recv())
+            print "Got msg: ", msg
+            
+            buf = pickle.loads(cache.getBuffer(msg["sourceLabel"], msg["offset"]))
+            print type(buf)
+            print "Got bug"
+            res = getattr(buf, msg["method"])(msg["fn"])
+            print "Got res"
+
+            cache.pushBuffer(msg["destLabel"], msg["offset"], pickle_dumps(res))
+
+            reply = {
+              "destLabel": msg["destLabel"],
+              "offset": msg["offset"],
+              "status": "ok"
+            }
+
+            returner.send_pyobj(reply)
+
 
