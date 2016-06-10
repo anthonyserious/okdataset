@@ -3,6 +3,8 @@ master:
   host: localhost
   port: 8202
 
+workers: 8
+
 cache:
   redis:
     host: localhost

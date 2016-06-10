@@ -1,33 +1,58 @@
+from okdataset.clist import ChainableList
+from okdataset.worker import Worker
+
+from cloud.serialization.cloudpickle import dumps as pickle_dumps
+import pickle
+from itertools import groupby
+
 """
 DataSet
 """
 class DataSet(ChainableList):
-    def __init__(self, context, key, clist):
+    def __init__(self, context, label, clist):
         ChainableList.__init__(self,clist)
         
-        self.workers = {}
+        self.workers = context.workers
         self.context = context
-        self.key = key
+        self.cache = context.cache
+        self.label = label
         self.clist = clist
-        self.defaults = Defaults()
         self.dsLen = len(clist)
+        self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
+
+        """
+        Store the current working dataset label.  This will change as new intermediary
+        datasets are created.
+        """
+        self.currentDsLabel = label
         
-        # Define total number of buffers
-        self.buffers = self.dsLen / self.defaults.dsBufferSize
-        self.buffers = self.buffers + 1 if self.dsLen % self.defaults.dsBufferSize > 0 else self.buffers
-        
-        for workerId in xrange(0, self.defaults.workers):
-            self.workers[workerId] = Worker()
-        
+        # Set total number of buffers
+        self.buffers = self.dsLen / self.bufferSize
+        self.buffers = self.buffers + 1 if self.dsLen % self.bufferSize > 0 else self.buffers
+
+        for i in xrange(0, self.buffers):
+            start = self.bufferSize * i
+            end = self.bufferSize * (i + 1)
+
+            self.cache.pushBuffer(label, i, ChainableList(clist[start:end]))
+
+        for workerId in self.workers:
             for i in xrange(0, self.buffers):
                 if i % (workerId + 1) == 0:
-                    self.workers[workerId].pushOffset(key, i)
-    
-    def _pushWorker(self, workerId, clist):
-        self.workers[workerId] = clist
-        
+                    self.workers[workerId].pushOffset(self.label, i)
+
+    def createIntermediary(self):
+        prefix = self.label + "_intermediary_"
+        self.currentDsLabel = prefix + str(self.cache.incr(prefix))
+        return self.currentDsLabel
+
     def map(self, f):
-        return ChainableList(map(f, self[:]))
+        pf = pickle_dumps(f)
+
+        for w in self.workers.keys():
+            worker = self.workers[w]
+            worker.apply("map", pf, self.currentDsLabel, self.createIntermediary())
+        return self
 
     def filter(self, f):
         return ChainableList(filter(f, self[:]))
@@ -46,4 +71,7 @@ class DataSet(ChainableList):
             res.append((key, reduce(f, values)))
         
         return res
+
+    def collect(self):
+        pass
 
