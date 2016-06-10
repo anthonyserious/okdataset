@@ -60,15 +60,17 @@ class DataSet(ChainableList):
 
     def map(self, f):
         keys = self.cache.getKeys(self.currentDsLabel)
-
+        source = self.currentDsLabel
+        dest = self.createIntermediary()
+        
         for key in keys:
             self.sender.send(pickle_dumps({
                 "method": "map",
                 "fn": f,
                 "offset": key,
-                "sourceLabel": self.currentDsLabel,
-                "destLabel": self.createIntermediary()
-            }))
+                "sourceLabel": source,
+                "destLabel": dest
+        }))
 
         results = 0
 
