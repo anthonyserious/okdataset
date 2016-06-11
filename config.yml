@@ -13,7 +13,7 @@ cache:
     host: localhost
     port: 6379
   io:
-    bufferSize: 1024
+    bufferSize: 10240
 
 
 
