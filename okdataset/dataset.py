@@ -1,4 +1,5 @@
 from okdataset.clist import ChainableList
+from okdataset.logger import Logger
 from okdataset.worker import Worker
 
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
@@ -20,6 +21,8 @@ class DataSet(ChainableList):
         self.dsLen = len(clist)
         self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
 
+        self.logger = Logger("dataset '" + self.label + "'")
+
         """
         zmq init
         """
@@ -33,9 +36,11 @@ class DataSet(ChainableList):
 
         self.sender = context.socket(zmq.PUSH)
         self.sender.bind("tcp://*:" + str(self.context.config["cluster"]["send"]["port"]))
-        
+        self.logger.debug("Initialized sender socket")
+
         self.sink = context.socket(zmq.PULL)
         self.sink.bind("tcp://*:" + str(self.context.config["cluster"]["return"]["port"]))
+        self.logger.debug("Initialized sink socket")
 
         """
         Store the current working dataset label.  This will change as new intermediary
@@ -52,6 +57,8 @@ class DataSet(ChainableList):
             end = self.bufferSize * (i + 1)
 
             self.cache.pushBuffer(label, i, pickle_dumps(ChainableList(clist[start:end])))
+        
+        self.logger.debug("Initialized with %d" % self.buffers)
 
     def createIntermediary(self):
         prefix = self.label + "_intermediary_"
@@ -59,11 +66,16 @@ class DataSet(ChainableList):
         return self.currentDsLabel
 
     def map(self, f):
+        self.logger.debug("Starting map on %s" % self.currentDsLabel)
+
         keys = self.cache.getKeys(self.currentDsLabel)
+        self.logger.debug("Got %d keys" % len(keys))
+        
         source = self.currentDsLabel
         dest = self.createIntermediary()
         
         for key in keys:
+            self.logger.trace("Sending key %s" % key)
             self.sender.send(pickle_dumps({
                 "method": "map",
                 "fn": f,
@@ -75,8 +87,11 @@ class DataSet(ChainableList):
         results = 0
 
         while results != len(keys) - 1:
+            self.logger.trace("Received %d out of %d results" % (results, len(keys) - 1))
             res = self.sink.recv_pyobj()
-
+            results = results + 1
+        
+        self.logger.debug("map complete")
 
     def filter(self, f):
         return ChainableList(filter(f, self[:]))
