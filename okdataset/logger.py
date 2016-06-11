@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import platform
+import sys
 
 """
 Logger compatible with node.js's llog.
@@ -49,33 +50,37 @@ class Logger(object):
             log["msg"] = msg
         
         return log
+    
+    def _print(self, log):
+        print json.dumps(log)
+        sys.stdout.flush()
         
     def fatal(self, fields, msg=None):
         log = self._pre()
         log["level"] = 60
-        print log
+        self._print(log)
         
     def error(self, fields, msg=None):
         log = self._pre(fields, msg=msg)
         log["level"] = 50
-        print log
+        self._print(log)
         
     def warn(self, fields, msg=None):
         log = self._pre(fields, msg=msg)
         log["level"] = 40
-        print log
+        self._print(log)
         
     def info(self, fields, msg=None):
         log = self._pre(fields, msg=msg)
         log["level"] = 30
-        print log
+        self._print(log)
 
     def debug(self, fields, msg=None):
         log = self._pre(fields, msg=msg)
         log["level"] = 20
-        print log
+        self._print(log)
 
     def trace(self, fields, msg=None):
         log = self._pre(fields, msg=msg)
         log["level"] = 10
-        print log
+        self._print(log)
