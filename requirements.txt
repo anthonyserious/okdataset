@@ -1,3 +1,5 @@
 hiredis==0.2.0
 redis==2.10.5
 PyYAML==3.11
+cloud==2.8.5
+zmq==0.0.0
