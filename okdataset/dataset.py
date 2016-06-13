@@ -1,6 +1,5 @@
 from okdataset.clist import ChainableList
 from okdataset.logger import Logger
-from okdataset.worker import Worker
 
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
 import pickle
@@ -11,15 +10,30 @@ import zmq
 DataSet
 """
 class DataSet(ChainableList):
-    def __init__(self, context, label, clist):
-        ChainableList.__init__(self, clist)
-        
+    def __init__(self, context, label, clist=None, fromExisting=False, bufferSize=None):
         self.context = context
         self.cache = context.cache
         self.label = label
-        self.clist = clist
-        self.dsLen = len(clist)
-        self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
+        
+        if clist is None and not fromExisting:
+            raise ValueError("Must provide either clist or fromExisting")
+
+        if clist is not None and fromExisting:
+            raise ValueError("Cannot provide both clist and fromExisting")
+
+        if fromExisting and bufferSize is not None:
+            raise ValueError("Cannot specify bufferSize for existing dataset")
+
+        if clist is not None:
+            ChainableList.__init__(self, clist)
+        
+            self.clist = clist
+            self.dsLen = len(clist)
+        
+        if bufferSize is not None:
+            self.bufferSize = bufferSize
+        else:
+            self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
 
         self.logger = Logger("dataset '" + self.label + "'")
 
@@ -47,18 +61,20 @@ class DataSet(ChainableList):
         datasets are created.
         """
         self.currentDsLabel = label
-        
-        # Set total number of buffers
-        self.buffers = self.dsLen / self.bufferSize
-        self.buffers = self.buffers + 1 if self.dsLen % self.bufferSize > 0 else self.buffers
+        if fromExisting:
+            self.cache.len(label)
+        else:
+            # Set total number of buffers
+            self.buffers = self.dsLen / self.bufferSize
+            self.buffers = self.buffers + 1 if self.dsLen % self.bufferSize > 0 else self.buffers
 
-        for i in xrange(0, self.buffers + 1):
-            start = self.bufferSize * i
-            end = self.bufferSize * (i + 1)
+            for i in xrange(0, self.buffers + 1):
+                start = self.bufferSize * i
+                end = self.bufferSize * (i + 1)
 
-            self.cache.pushBuffer(label, i, pickle_dumps(ChainableList(clist[start:end])))
-        
-        self.logger.debug("Initialized with %d" % self.buffers)
+                self.cache.pushBuffer(label, i, pickle_dumps(ChainableList(clist[start:end])))
+            
+            self.logger.debug("Initialized with %d" % self.buffers)
 
     def createIntermediary(self):
         prefix = self.label + "_intermediary_"
