@@ -1,10 +1,7 @@
 import time
 
-class Profiler(object):
+class Timer(object):
     def __init__(self):
-        pass
-
-    def start(self):
         self.t = time.time()
         self.c = time.clock()
 
@@ -13,4 +10,8 @@ class Profiler(object):
             "time": time.time() - self.t,
             "clock": time.clock() - self.c
         }
+
+    def reset(self):
+        self.t = time.time()
+        self.c = time.clock()
 
