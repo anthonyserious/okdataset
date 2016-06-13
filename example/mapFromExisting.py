@@ -8,7 +8,7 @@ from okdataset.logger import Logger
 logger = Logger("map from existing example")
 
 context = Context()
-logger.info("Building dataset")
+logger.info("Building dataset from existing")
 ds = DataSet(context, "big list", fromExisting=True)
 
 logger.info("Calling map")
