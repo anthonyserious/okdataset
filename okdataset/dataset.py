@@ -145,6 +145,8 @@ class DataSet(ChainableList):
         self.logger.info("map complete")
         self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
 
+        return self
+
     def filter(self, f):
         return ChainableList(filter(f, self[:]))
 
