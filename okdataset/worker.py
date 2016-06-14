@@ -34,22 +34,33 @@ class Worker(object):
             local = Timer()
 
             zmqTimer = Timer()
-            msg = pickle.loads(receiver.recv())
+            msg = receiver.recv()
             profiler.add("workerZmq", zmqTimer.since())
-
+            
+            pickleTimer = Timer()
+            msg = pickle.loads(msg)
+            profiler.add("workerPickle", pickleTimer.since())
             self.logger.trace("Received message: " + str(msg))
             
             cacheTimer = Timer()
-            buf = pickle.loads(cache.getBuffer(msg["sourceLabel"], msg["offset"]))
+            buf = cache.getBuffer(msg["sourceLabel"], msg["offset"])
             profiler.add("workerCache", cacheTimer.since())
+
+            pickleTimer = Timer()
+            buf = pickle.loads(buf)
+            profiler.add("workerPickle", pickleTimer.since())
 
             self.logger.trace("Received buffer")
             
             res = getattr(buf, msg["method"])(msg["fn"])
             self.logger.trace("Processed buffer")
 
+            pickleTimer = Timer()
+            res = pickle_dumps(res)
+            profiler.add("workerPickle", pickleTimer.since())
+
             cacheTimer = Timer()
-            cache.pushBuffer(msg["destLabel"], msg["offset"], pickle_dumps(res))
+            cache.pushBuffer(msg["destLabel"], msg["offset"], res)
             profiler.add("workerCache", cacheTimer.since())
 
             self.logger.trace("Processed buffer")

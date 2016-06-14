@@ -81,8 +81,12 @@ class DataSet(ChainableList):
                 start = self.bufferSize * i
                 end = self.bufferSize * (i + 1)
                 
+                pickleTimer = Timer()
+                buf = pickle_dumps(ChainableList(clist[start:end]))
+                self.profiler.add("masterPickle", pickleTimer.since())
+
                 cacheTimer = Timer()
-                self.cache.pushBuffer(label, i, pickle_dumps(ChainableList(clist[start:end])))
+                self.cache.pushBuffer(label, i, buf)
                 self.profiler.add("masterCache", cacheTimer.since())
             
             self.logger.debug("Initialized with %d" % self.buffers)
@@ -117,14 +121,18 @@ class DataSet(ChainableList):
         for key in keys:
             self.logger.trace("Sending key %s" % key)
             
-            zmqTimer = Timer()
-            self.sender.send(pickle_dumps({
+            pickleTimer = Timer()
+            msg = pickle_dumps({
                 "method": "map",
                 "fn": f,
                 "offset": key,
                 "sourceLabel": source,
                 "destLabel": dest
-            }))
+            })
+            self.profiler.add("masterPickle", pickleTimer.since())
+
+            zmqTimer = Timer()
+            self.sender.send(msg)
             self.profiler.add("masterZmq", zmqTimer.since())
 
         results = 0
