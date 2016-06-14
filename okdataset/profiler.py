@@ -47,3 +47,10 @@ class Profiler(object):
     def toDict(self):
         return dict((k, v.toDict()) for k, v in self.timings.iteritems())
 
+
+    # Appends all profiler data from p
+    def append(self, p):
+        for k, v in p.getTimings().iteritems():
+            self.add(k, v)
+
+

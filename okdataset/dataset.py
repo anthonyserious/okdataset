@@ -145,6 +145,7 @@ class DataSet(ChainableList):
             res = self.sink.recv_pyobj()
             
             self.profiler.add("masterZmq", zmqTimer.since())
+            self.profiler.append(res["profiler"])
             
             results = results + 1
         
