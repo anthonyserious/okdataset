@@ -13,6 +13,7 @@ ds = DataSet(context, "big list", fromExisting=True)
 
 logger.info("Calling map")
 ds.map(lambda x: x * 2)
-
+ds.map(lambda x: x + 3)
+ds.compute()
 logger.info("All done!")
 

@@ -1,6 +1,7 @@
 from okdataset.clist import ChainableList
 from okdataset.logger import Logger
 from okdataset.profiler import Profiler, Timer
+from okdataset.cache import Meta
 
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
 import json
@@ -15,7 +16,9 @@ class DataSet(ChainableList):
     def __init__(self, context, label, clist=None, fromExisting=False, bufferSize=None):
         self.context = context
         self.cache = context.cache
+        self.meta = Meta(self.cache)
         self.label = label
+        self.opsList = []
         
         localTimer = Timer()
 
@@ -92,6 +95,7 @@ class DataSet(ChainableList):
             self.logger.debug("Initialized with %d" % self.buffers)
             self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
 
+
     def createIntermediary(self):
         prefix = self.label + "_intermediary_"
         
@@ -103,8 +107,34 @@ class DataSet(ChainableList):
         
         return self.currentDsLabel
 
-    def map(self, f):
-        self.logger.debug("Starting map on %s" % self.currentDsLabel)
+    def map(self, fn):
+        self.opsList.append({ "method": "map", "fn": fn })
+        return self
+
+    def filter(self, f):
+        self.opsList.append({ "method": "filter", "fn": fn })
+        return self
+
+    def reduce(self, f):
+        return ChainableList(reduce(f, self[:]))
+
+    # list items must be tuples of the form (key, ChainableList(values)) - like spark's LabeledPoint
+    def reduceByKey(self, f):
+        res = ChainableList([])
+        
+        groups = ChainableList([ (key, ChainableList(group)) for key, group in groupby(sorted(self), lambda x: x[0]) ])\
+            .map(lambda (key, items): (key, items.map(lambda x: x[1]))) 
+        
+        for key, values in groups:
+            res.append((key, reduce(f, values)))
+        
+        return res
+
+    def collect(self):
+        pass
+
+    def compute(self):
+        self.logger.debug("Starting compute on %s" % self.currentDsLabel)
 
         self.profiler = Profiler()
         localTimer = Timer()
@@ -117,14 +147,14 @@ class DataSet(ChainableList):
         
         source = self.currentDsLabel
         dest = self.createIntermediary()
+
+        self.meta.register(dest, { "opsList": self.opsList, "buffers": len(keys) })
         
         for key in keys:
             self.logger.trace("Sending key %s" % key)
             
             pickleTimer = Timer()
             msg = pickle_dumps({
-                "method": "map",
-                "fn": f,
                 "offset": key,
                 "sourceLabel": source,
                 "destLabel": dest
@@ -155,27 +185,6 @@ class DataSet(ChainableList):
         self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
 
         return self
-
-    def filter(self, f):
-        return ChainableList(filter(f, self[:]))
-
-    def reduce(self, f):
-        return ChainableList(reduce(f, self[:]))
-
-    # list items must be tuples of the form (key, ChainableList(values)) - like spark's LabeledPoint
-    def reduceByKey(self, f):
-        res = ChainableList([])
-        
-        groups = ChainableList([ (key, ChainableList(group)) for key, group in groupby(sorted(self), lambda x: x[0]) ])\
-            .map(lambda (key, items): (key, items.map(lambda x: x[1]))) 
-        
-        for key, values in groups:
-            res.append((key, reduce(f, values)))
-        
-        return res
-
-    def collect(self):
-        pass
 
 
     def getProfile(self, f=None):

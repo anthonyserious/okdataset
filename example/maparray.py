@@ -16,6 +16,6 @@ ds = DataSet(context, "big list", l)
 
 logger.info("Calling map")
 ds.map(lambda x: x * 2)
-
+ds.compute()
 logger.info("All done!")
 

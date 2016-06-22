@@ -1,15 +1,20 @@
-import redis
+from cloud.serialization.cloudpickle import dumps as pickle_dumps
 import hiredis
+import pickle
+import redis
 
 class Cache(object):
     def __init__(self, config):
         self.r = redis.StrictRedis(host=config["host"], port=config["port"], db=0)
 
     def pushBuffer(self, dsLabel, offset, buf):
-        self.r.hset(dsLabel, offset, buf)
+        return self.r.hset(dsLabel, offset, buf)
+    
+    def hset(self, label, key, val):
+        return self.r.hset(label, key, val)
 
-    def getBuffer(self, dsLabel, offset):
-        return self.r.hget(dsLabel, offset)
+    def get(self, label, key):
+        return self.r.hget(label, key)
 
     def incr(self, key, amount=1):
         return self.r.incr(key, amount=amount)
@@ -22,4 +27,48 @@ class Cache(object):
 
     def delete(self, dsLabel):
         return self.r.delete(dsLabel)
+
+    def hdel(self, label, key):
+        return self.r.hdel(label, key)
+
+"""
+Stores metadata about labeled and intermediary datasets, including:
+
+- Dataset label
+- Function to apply
+- Buffer size
+
+It also is used for dataset removal.
+
+"""
+class Meta(object):
+    def __init__(self, cache):
+        self.label = "okmeta"
+        self.cache = cache
+
+    def register(self, dsLabel, obj):
+        self.cache.hset(self.label, dsLabel, pickle_dumps(obj))
+
+    def get(self, dsLabel):
+        return pickle.loads(self.cache.get(self.label, dsLabel))
+
+    """
+    create intermediary label
+    append operating + fn to a list
+    """
+    def createIntermediary(self, ds):
+        prefix = "%s_intermediary_" % ds.label
+        
+        timer = Timer()
+        
+        self.currentDsLabel = prefix + str(self.cache.incr(prefix))
+        
+        self.profiler.add("masterCache", timer.since())
+        
+        return self.currentDsLabel
+   
+    def remove(self, dsLabel):
+        self.cache.hdel(self.label, dsLabel)
+        self.cache.delete(dsLabel)
+
 

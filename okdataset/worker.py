@@ -1,4 +1,4 @@
-from okdataset.cache import Cache
+from okdataset.cache import Cache, Meta
 from okdataset.logger import Logger
 from okdataset.profiler import Profiler, Timer
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
@@ -13,7 +13,12 @@ class Worker(object):
     def __init__(self, config):
         self.logger = Logger("worker")
         self.offsets = {}
+        
         cache = Cache(config["cache"]["redis"])
+        meta = Meta(cache)
+
+        self.currentDestLabel = ""
+        self.opsList = None
         
         cluster = config["cluster"]
         
@@ -41,9 +46,13 @@ class Worker(object):
             msg = pickle.loads(msg)
             profiler.add("workerPickle", pickleTimer.since())
             self.logger.trace("Received message: " + str(msg))
+
+            if self.currentDestLabel != msg["destLabel"]:
+                self.opsList = meta.get(msg["destLabel"])["opsList"]
+                self.currentDestLabel = msg["destLabel"]
             
             cacheTimer = Timer()
-            buf = cache.getBuffer(msg["sourceLabel"], msg["offset"])
+            buf = cache.get(msg["sourceLabel"], msg["offset"])
             profiler.add("workerCache", cacheTimer.since())
 
             pickleTimer = Timer()
@@ -52,7 +61,10 @@ class Worker(object):
 
             self.logger.trace("Received buffer")
             
-            res = getattr(buf, msg["method"])(msg["fn"])
+            res = buf
+            for op in self.opsList:
+                res = getattr(res, op["method"])(op["fn"])
+            
             self.logger.trace("Processed buffer")
 
             pickleTimer = Timer()
