@@ -131,7 +131,26 @@ class DataSet(ChainableList):
         return res
 
     def collect(self):
-        pass
+        self.profiler = Profiler()
+        localTimer = Timer()
+ 
+        self.compute()
+        res = ChainableList([])
+
+        for k in sorted(self.cache.getKeys(self.currentDsLabel), key=lambda x: int(x)):
+            cacheTimer = Timer()
+            buf = self.cache.get(self.currentDsLabel, k)
+            self.profiler.add("collectCache", cacheTimer.since())
+
+            pickleTimer = Timer()
+            buf = pickle.loads(buf)
+            self.profiler.add("collectPickle", pickleTimer.since())
+
+            res = res + buf
+
+        self.profiler.add("collectMaster", localTimer.since())
+
+        return res
 
     def compute(self):
         self.logger.debug("Starting compute on %s" % self.currentDsLabel)
@@ -141,7 +160,7 @@ class DataSet(ChainableList):
         
         cacheTimer = Timer()
         keys = self.cache.getKeys(self.currentDsLabel)
-        self.profiler.add("masterCache", cacheTimer.since())
+        self.profiler.add("computeCache", cacheTimer.since())
 
         self.logger.debug("Got %d keys" % len(keys))
         
@@ -159,11 +178,11 @@ class DataSet(ChainableList):
                 "sourceLabel": source,
                 "destLabel": dest
             })
-            self.profiler.add("masterPickle", pickleTimer.since())
+            self.profiler.add("computePickle", pickleTimer.since())
 
             zmqTimer = Timer()
             self.sender.send(msg)
-            self.profiler.add("masterZmq", zmqTimer.since())
+            self.profiler.add("computeZmq", zmqTimer.since())
 
         results = 0
 
@@ -174,12 +193,12 @@ class DataSet(ChainableList):
             
             res = self.sink.recv_pyobj()
             
-            self.profiler.add("masterZmq", zmqTimer.since())
+            self.profiler.add("computeZmq", zmqTimer.since())
             self.profiler.append(res["profiler"])
             
             results = results + 1
         
-        self.profiler.add("masterOverall", localTimer.since())
+        self.profiler.add("computeOverall", localTimer.since())
         
         self.logger.info("map complete")
         self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
