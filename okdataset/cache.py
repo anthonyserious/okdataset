@@ -1,7 +1,9 @@
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
 import hiredis
+from okdataset.logger import Logger
 import pickle
 import redis
+
 
 class Cache(object):
     def __init__(self, config):
@@ -45,11 +47,14 @@ class Meta(object):
     def __init__(self, cache):
         self.label = "okmeta"
         self.cache = cache
+        self.logger = Logger(self.label)
 
     def register(self, dsLabel, obj):
+        self.logger.debug("Registering '%s'" % dsLabel)
         self.cache.hset(self.label, dsLabel, pickle_dumps(obj))
 
     def get(self, dsLabel):
+        self.logger.debug("Getting '%s'" % dsLabel)
         return pickle.loads(self.cache.get(self.label, dsLabel))
 
     """
@@ -57,6 +62,7 @@ class Meta(object):
     append operating + fn to a list
     """
     def createIntermediary(self, ds):
+        self.logger.debug("Creating intermediary '%s'" % dsLabel)
         prefix = "%s_intermediary_" % ds.label
         
         timer = Timer()
@@ -68,7 +74,11 @@ class Meta(object):
         return self.currentDsLabel
    
     def remove(self, dsLabel):
+        self.logger.debug("Removing '%s'" % dsLabel)
         self.cache.hdel(self.label, dsLabel)
         self.cache.delete(dsLabel)
+
+    def rename(self, label, newLabel):
+        self.cache.hset(self.label, newLabel, self.cache.get(self.label, label))
 
 

@@ -14,7 +14,10 @@ l = ChainableList([ x for x in xrange(0, 100) ])
 logger.info("Building dataset")
 ds = DataSet(context, "100ints", l, bufferSize=1)
 
+a = 1
 logger.info("Calling map")
-ds.map(lambda x: x * 2)
-print ds.collect()
+ds.map(lambda x: x * 2 + a)
+res = ds.collect()
+print type(res)
+print res
 

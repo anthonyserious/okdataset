@@ -146,9 +146,11 @@ class DataSet(ChainableList):
             buf = pickle.loads(buf)
             self.profiler.add("collectPickle", pickleTimer.since())
 
-            res = res + buf
+            res.extend(buf)
 
         self.profiler.add("collectMaster", localTimer.since())
+        self.meta.remove(self.currentDsLabel)
+        self.currentDsLabel = self.label
 
         return res
 
@@ -211,4 +213,8 @@ class DataSet(ChainableList):
             f(self.profiler.toDict())
         else:
             return self.profiler.toDict()
+
+    def label(self, label):
+        self.meta.rename(self.currentDsLabel, label)
+        self.currentDsLabel = label
 
