@@ -218,3 +218,6 @@ class DataSet(ChainableList):
         self.meta.rename(self.currentDsLabel, label)
         self.currentDsLabel = label
 
+    def __del__(self):
+        self.meta.remove(self.currentDsLabel)
+
