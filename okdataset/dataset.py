@@ -73,6 +73,8 @@ class DataSet(ChainableList):
         datasets are created.
         """
         self.currentDsLabel = label
+        self.currentIsIntermediary = False
+
         if fromExisting:
             self.cache.len(label)
         else:
@@ -100,10 +102,11 @@ class DataSet(ChainableList):
         prefix = self.label + "_intermediary_"
         
         timer = Timer()
-        
         self.currentDsLabel = prefix + str(self.cache.incr(prefix))
-        
+        self.logger.debug("Creating intermediary '%s'" % self.currentDsLabel)
         self.profiler.add("masterCache", timer.since())
+
+        self.currentIsIntermediary = True
         
         return self.currentDsLabel
 
@@ -149,7 +152,11 @@ class DataSet(ChainableList):
             res.extend(buf)
 
         self.profiler.add("collectMaster", localTimer.since())
-        self.meta.remove(self.currentDsLabel)
+
+        if self.currentIsIntermediary:
+            self.logger.debug("Removing intermediary" + self.currentDsLabel)
+            self.meta.remove(self.currentDsLabel)
+
         self.currentDsLabel = self.label
 
         return res
@@ -169,7 +176,11 @@ class DataSet(ChainableList):
         source = self.currentDsLabel
         dest = self.createIntermediary()
 
-        self.meta.register(dest, { "opsList": self.opsList, "buffers": len(keys) })
+        self.meta.register(dest, {
+            "opsList": self.opsList, 
+            "buffers": len(keys),
+            "isIntermediary": True
+        })
         
         for key in keys:
             self.logger.trace("Sending key %s" % key)
@@ -217,6 +228,7 @@ class DataSet(ChainableList):
     def label(self, label):
         self.meta.rename(self.currentDsLabel, label)
         self.currentDsLabel = label
+        self.currentIsIntermediary = False
 
     def __del__(self):
         self.meta.remove(self.currentDsLabel)
