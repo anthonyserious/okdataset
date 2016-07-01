@@ -12,5 +12,6 @@ class Context(object):
 
         self.bufferSize = self.config["cache"]["io"]["bufferSize"]
         self.cache = Cache(self.config["cache"]["redis"])
+        self.master = Master(self.config, self.cache, self.bufferSize)
 
 

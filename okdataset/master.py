@@ -10,41 +10,15 @@ from itertools import groupby
 import zmq
 
 """
-DataSet
+Master
 """
-class DataSet(object):
-    def __init__(self, context, label, clist=None, fromExisting=False, bufferSize=None):
-        self.context = context
-        self.cache = context.cache
+class Master(ChainableList):
+    def __init__(self, cache, bufferSize):
+        self.cache = cache
         self.meta = Meta(self.cache)
-        self.label = label
-        self.opsList = []
         
         localTimer = Timer()
-
         self.profiler = Profiler()
-        
-        if clist is None and not fromExisting:
-            raise ValueError("Must provide either clist or fromExisting")
-
-        if clist is not None and fromExisting:
-            raise ValueError("Cannot provide both clist and fromExisting")
-
-        if fromExisting and bufferSize is not None:
-            raise ValueError("Cannot specify bufferSize for existing dataset")
-
-        if clist is not None:
-            ChainableList.__init__(self, clist)
-        
-            self.clist = clist
-            self.dsLen = len(clist)
-        
-        if bufferSize is not None:
-            self.bufferSize = bufferSize
-        else:
-            self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
-
-        self.logger = Logger("dataset '" + self.label + "'")
 
         """
         zmq init
