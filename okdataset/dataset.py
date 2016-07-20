@@ -12,7 +12,7 @@ import zmq
 """
 DataSet
 """
-class DataSet(object):
+class DataSet(ChainableList):
     def __init__(self, context, label, clist=None, fromExisting=False, bufferSize=None):
         self.context = context
         self.cache = context.cache
@@ -47,28 +47,6 @@ class DataSet(object):
         self.logger = Logger("dataset '" + self.label + "'")
 
         """
-        zmq init
-        """
-        try:
-            raw_input
-        except NameError:
-            # Python 3
-            raw_input = input
-        
-        zmqTimer = Timer()
-        context = zmq.Context()
-
-        self.sender = context.socket(zmq.PUSH)
-        self.sender.bind("tcp://*:" + str(self.context.config["cluster"]["send"]["port"]))
-        self.logger.debug("Initialized sender socket")
-
-        self.sink = context.socket(zmq.PULL)
-        self.sink.bind("tcp://*:" + str(self.context.config["cluster"]["return"]["port"]))
-        self.logger.debug("Initialized sink socket")
-        
-        self.profiler.add("localZmq", zmqTimer.since())
-
-        """
         Store the current working dataset label.  This will change as new intermediary
         datasets are created.
         """
@@ -97,6 +75,9 @@ class DataSet(object):
             self.logger.debug("Initialized with %d" % self.buffers)
             self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
 
+    def compute(self):
+        self.context.master.compute(self.currentDsLabel, self.createIntermediary(), self.opsList)
+        return self
 
     def createIntermediary(self):
         prefix = self.label + "_intermediary_"
@@ -137,7 +118,7 @@ class DataSet(object):
         self.profiler = Profiler()
         localTimer = Timer()
  
-        self.compute()
+        self.context.master.compute(self.opsList, self.currentDsLabel, self.createIntermediary())
         res = ChainableList([])
 
         for k in sorted(self.cache.getKeys(self.currentDsLabel), key=lambda x: int(x)):
@@ -160,63 +141,6 @@ class DataSet(object):
         self.currentDsLabel = self.label
 
         return res
-
-    def compute(self):
-        self.logger.debug("Starting compute on %s" % self.currentDsLabel)
-
-        self.profiler = Profiler()
-        localTimer = Timer()
-        
-        cacheTimer = Timer()
-        keys = self.cache.getKeys(self.currentDsLabel)
-        self.profiler.add("computeCache", cacheTimer.since())
-
-        self.logger.debug("Got %d keys" % len(keys))
-        
-        source = self.currentDsLabel
-        dest = self.createIntermediary()
-
-        self.meta.register(dest, {
-            "opsList": self.opsList, 
-            "buffers": len(keys),
-            "isIntermediary": True
-        })
-        
-        for key in keys:
-            self.logger.trace("Sending key %s" % key)
-            
-            pickleTimer = Timer()
-            msg = pickle_dumps({
-                "offset": key,
-                "sourceLabel": source,
-                "destLabel": dest
-            })
-            self.profiler.add("computePickle", pickleTimer.since())
-
-            zmqTimer = Timer()
-            self.sender.send(msg)
-            self.profiler.add("computeZmq", zmqTimer.since())
-
-        results = 0
-
-        while results != len(keys) - 1:
-            self.logger.trace("Received %d out of %d results" % (results, len(keys) - 1))
-
-            zmqTimer = Timer()
-            
-            res = self.sink.recv_pyobj()
-            
-            self.profiler.add("computeZmq", zmqTimer.since())
-            self.profiler.append(res["profiler"])
-            
-            results = results + 1
-        
-        self.profiler.add("computeOverall", localTimer.since())
-        
-        self.logger.info("map complete")
-        self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
-
-        return self
 
 
     def getProfile(self, f=None):
