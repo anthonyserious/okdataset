@@ -7,17 +7,17 @@ from okdataset.logger import Logger
 
 logger = Logger("maparray example")
 
-context = Context()
 logger.info("Building big list")
 l = ChainableList([ x for x in xrange(0, 100) ])
 
 logger.info("Building dataset")
-ds = DataSet(context, "100ints", l, bufferSize=1)
+context = Context()
+ds = context.dataSet(l, bufferSize=1)
 
 a = 1
 logger.info("Calling map")
 ds.map(lambda x: x * 2 + a)
+
 res = ds.collect()
-print type(res)
 print res
 

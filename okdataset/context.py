@@ -1,4 +1,5 @@
 from okdataset.cache import Cache
+from okdataset.dataset import DataSet
 from master import Master
 
 import os
@@ -16,4 +17,8 @@ class Context(object):
 
         if master:
             self.master = Master(self.config, self.cache, self.bufferSize)
+    
+    def dataSet(self, *args, **kwargs):
+        return DataSet(self, *args, **kwargs)
+
 
