@@ -67,6 +67,17 @@ class Worker(object):
             
             self.logger.trace("Processed buffer")
 
+            reply = {
+                "destLabel": msg["destLabel"],
+                "offset": msg["offset"],
+                "status": "ok",
+                "profiler": profiler
+            }
+
+            # in case of flatMap
+            if len(res) != len(buf):
+                reply["size"] = len(res)
+
             pickleTimer = Timer()
             res = pickle_dumps(res)
             profiler.add("workerPickle", pickleTimer.since())
@@ -78,13 +89,6 @@ class Worker(object):
             self.logger.trace("Processed buffer")
 
             profiler.add("workerOverall", local.since())
-
-            reply = {
-              "destLabel": msg["destLabel"],
-              "offset": msg["offset"],
-              "status": "ok",
-              "profiler": profiler
-            }
 
             returner.send_pyobj(reply)
             self.logger.trace("Reply sent")

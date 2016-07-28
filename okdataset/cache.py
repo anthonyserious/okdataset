@@ -27,23 +27,25 @@ class Cache(object):
     def len(self, dsLabel):
         return self.r.hlen(dsLabel)
 
-    def delete(self, dsLabel):
-        return self.r.delete(dsLabel)
+    def delete(self, label):
+        #print "deleting ", label
+        self.r.delete(label)
+
 
     def hdel(self, label, key):
         return self.r.hdel(label, key)
 
-"""
-Stores metadata about labeled and intermediary datasets, including:
-
-- Dataset label
-- Function to apply
-- Buffer size
-
-It also is used for dataset removal.
-
-"""
 class Meta(object):
+    """
+    Stores metadata about labeled and intermediary datasets, including:
+
+    - Dataset label
+    - Function to apply
+    - Buffer size
+
+    It also is used for dataset removal.
+
+    """
     def __init__(self, cache):
         self.label = "okmeta"
         self.cache = cache
@@ -57,11 +59,11 @@ class Meta(object):
         self.logger.debug("Getting '%s'" % dsLabel)
         return pickle.loads(self.cache.get(self.label, dsLabel))
 
-    """
-    create intermediary label
-    append operating + fn to a list
-    """
     def createIntermediary(self, ds):
+        """
+        Create intermediary label
+        append operating + fn to a list
+        """
         self.logger.debug("Creating intermediary '%s'" % dsLabel)
         prefix = "%s_intermediary_" % ds.label
         

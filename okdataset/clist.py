@@ -1,3 +1,6 @@
+from itertools import groupby, chain, imap
+from operator import itemgetter
+
 """
 List with chainable function methods.
 """

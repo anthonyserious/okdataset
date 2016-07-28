@@ -89,6 +89,10 @@ class DataSet(object):
         
         return self.currentDsLabel
 
+    def flatMap(self, fn):
+        self.opsList.append({ "method": "flatMap", "fn": fn })
+        return self
+
     def map(self, fn):
         self.opsList.append({ "method": "map", "fn": fn })
         return self
