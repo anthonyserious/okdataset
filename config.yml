@@ -1,11 +1,14 @@
 ---
 cluster:
-  send:
+  master:
     host: localhost
     port: 11211
-  return:
+  send:
     host: localhost
     port: 11249
+  return:
+    host: localhost
+    port: 10036
   workers: 8
 
 cache:
