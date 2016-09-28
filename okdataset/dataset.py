@@ -119,7 +119,8 @@ class DataSet(ChainableList):
         return self
 
     def reduce(self, f):
-        return ChainableList(reduce(f, self[:]))
+        self.opsList.append({ "method": "reduce", "fn": fn })
+        return self.collect()
 
     # list items must be tuples of the form (key, ChainableList(values)) - like spark's LabeledPoint
     def reduceByKey(self, f):
