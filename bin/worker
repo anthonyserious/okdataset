@@ -3,6 +3,6 @@
 from okdataset.context import Context
 from okdataset.worker import Worker
 
-config = Context().config
+config = Context(master=False).config
 worker = Worker(config)
 
