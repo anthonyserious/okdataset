@@ -2,5 +2,6 @@
 
 from okdataset.context import Context
 
-Context().createWorker()
+Context().createMaster().mainLoop()
+
 

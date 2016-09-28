@@ -1,9 +1,10 @@
 ---
+server:
+  host: localhost
+  port: 11211
+
 cluster:
   master:
-    host: localhost
-    port: 11211
-  send:
     host: localhost
     port: 11249
   return:

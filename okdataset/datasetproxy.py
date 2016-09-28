@@ -1,8 +1,14 @@
+import uuid
+
 class DataSetProxy(object):
-    def __init__(self, client=None, clist=None, label=None, fromExisting=False, bufferSize=None):
+    def __init__(self, client, config, clist=None, label=None, fromExisting=False, bufferSize=None):
         self.opsList = []
         self.clist = clist
         self.client = client
+
+
+        # unique dataset handle ID
+        self.id = uuid.uuid1()
         
         if client is None:
             raise ValueError("Must provide a client")
@@ -19,9 +25,10 @@ class DataSetProxy(object):
         if bufferSize is not None:
             self.bufferSize = bufferSize
         else:
-            self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
+            self.bufferSize = config["cache"]["io"]["bufferSize"]
 
         self.client.send({
+            "id": self.id,
             "method": "create",
             "data": {
                 "clist": clist,
@@ -33,8 +40,10 @@ class DataSetProxy(object):
 
 
     def map(self, fn):
-        return self.client.send({ "method": "map", "data": fn })
+        return self.client.send({ "id": self.id, "method": "map", "data": fn })
 
     def collect(self):
-        return self.client.send({ "method": "collect" })
+        return self.client.send({ "id": self.id, "method": "collect" })
 
+    def compute(self):
+        return self.client.send({"id": self.id, "method": "compute"})
