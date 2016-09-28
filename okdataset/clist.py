@@ -1,5 +1,4 @@
 from itertools import groupby, chain, imap
-from operator import itemgetter
 
 """
 List with chainable function methods.
@@ -37,6 +36,7 @@ class ChainableList(list):
         res = ChainableList([])
 
         for key, values in groups:
+            print(values)
             res.append((key, reduce(f, values)))
 
         return res

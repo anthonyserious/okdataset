@@ -125,21 +125,31 @@ class Master(ChainableList):
             data = req.get("data")
 
             if req["method"] == "create":
+                self.logger.debug("create called for dataset %s, id %s" % (req["data"]["label"], req["id"]))
                 ds = DataSet(self.cache, self.config, data["clist"], label=data["label"], fromExisting=data["fromExisting"], bufferSize=data["bufferSize"])
+                print(ds.currentDsLabel)
                 self.dataSets[req["id"]] = ds
                 self.server.send(pickle_dumps({ "status": "ok" }))
 
             elif req["method"] in [ "map", "flatMap", "reduce", "reduceByKey", "filter" ]:
-                getattr(self.dataSets[req["id"]], req["method"])(data)
+                ds = self.dataSets[req["id"]]
+                self.logger.debug("%s called for dataset %s, id %s" % (req["method"], ds.currentDsLabel, req["id"]))
+
+                getattr(ds, req["method"])(data)
                 self.server.send(pickle_dumps({ "status": "ok" }))
 
             elif req["method"] == "collect":
                 ds = self.dataSets[req["id"]]
+                self.logger.debug("collect called for dataset %s, id %s" % (ds.currentDsLabel, req["id"]))
+
                 self.compute(ds.currentDsLabel, ds.createIntermediary(), ds.opsList)
                 res = ds.collect()
                 self.server.send(pickle_dumps({"status": "ok", "data": res}))
 
             elif req["method"] == "compute":
+                ds = self.dataSets[req["id"]]
+                self.logger.debug("compute called for dataset %s, id %s" % (ds.currentDsLabel, req["id"]))
+
                 self.compute(ds.currentDsLabel, ds.createIntermediary(), ds.opsList)
                 self.server.send(pickle_dumps({ "status": "ok" }))
 

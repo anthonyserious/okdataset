@@ -60,7 +60,9 @@ class DataSetProxy(object):
         return self
 
     def collect(self):
-        return self.client.send({ "id": self.id, "method": "collect" })
+        res = self.client.send({ "id": self.id, "method": "collect" })
+        if res["status"] == "ok":
+            return res["data"]
 
     def compute(self):
         self.client.send({"id": self.id, "method": "compute"})

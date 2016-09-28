@@ -13,7 +13,7 @@ import zmq
 """
 DataSet
 """
-class DataSet(object):
+class DataSet(ChainableList):
     def __init__(self, cache, config, clist=None, label=None, fromExisting=False, bufferSize=None):
         self.cache = cache
         self.config = config
@@ -73,8 +73,6 @@ class DataSet(object):
             self.logger.debug("Initialized with %d buffers" % self.buffers)
             self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
 
-    #
-
 
     def createIntermediary(self):
         prefix = self.label + "_intermediary_"
@@ -111,6 +109,7 @@ class DataSet(object):
             .map(lambda (key, items): (key, items.map(lambda x: x[1]))) 
         
         for key, values in groups:
+            self.logger.trace(values)
             res.append((key, reduce(fn, values)))
         
         return res
