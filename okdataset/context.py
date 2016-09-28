@@ -27,7 +27,6 @@ class Context(object):
         return Worker(self.config, self.cache)
 
     def dataSet(self, *args, **kwargs):
-        print(kwargs)
         return DataSetProxy(self.client, self.config, *args, **kwargs)
 
 

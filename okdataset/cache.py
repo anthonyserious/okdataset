@@ -28,7 +28,6 @@ class Cache(object):
         return self.r.hlen(dsLabel)
 
     def delete(self, label):
-        #print "deleting ", label
         self.r.delete(label)
 
 
