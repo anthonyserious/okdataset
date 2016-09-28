@@ -34,14 +34,21 @@ class Master(ChainableList):
         zmqTimer = Timer()
         context = zmq.Context()
 
+        # Sender
         self.sender = context.socket(zmq.PUSH)
         self.sender.bind("tcp://*:" + str(self.config["cluster"]["send"]["port"]))
         self.logger.debug("Initialized sender socket")
 
+        # Sink
         self.sink = context.socket(zmq.PULL)
         self.sink.bind("tcp://*:" + str(self.config["cluster"]["return"]["port"]))
         self.logger.debug("Initialized sink socket")
         
+        # Server
+        self.server = context.socket(zmq.REP)
+        self.socket.bind("tcp://*:" + str(self.config["cluster"]["return"]["port"]))
+        self.logger.debug("Initialized server socket")
+
         self.profiler.add("localZmq", zmqTimer.since())
 
     def compute(self, label, intermediaryLabel, opsList):

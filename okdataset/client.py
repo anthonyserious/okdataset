@@ -1,4 +1,5 @@
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
+import pickle
 import zmq
 
 class Client(object):
@@ -13,5 +14,8 @@ class Client(object):
         self.socket = context.socket(zmq.REQ)
         socket.connect("tcp://%s:%d" % (self.config["master"]["host"], self.config["master"]["port"]))
 
-
+    def send(self, data):
+        self.socket.send(pickle_dumps(data))
+        return pickle.loads(self.socket.recv())
+        
 

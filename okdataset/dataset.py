@@ -128,10 +128,6 @@ class DataSet(object):
             buf = self.cache.get(self.currentDsLabel, k)
             self.profiler.add("collectCache", cacheTimer.since())
 
-            pickleTimer = Timer()
-            buf = pickle.loads(buf)
-            self.profiler.add("collectPickle", pickleTimer.since())
-
             res.extend(buf)
 
         self.profiler.add("collectMaster", localTimer.since())
@@ -142,7 +138,7 @@ class DataSet(object):
 
         self.currentDsLabel = self.label
 
-        return res
+        return pickle_dumps(res)
 
 
     def getProfile(self, f=None):

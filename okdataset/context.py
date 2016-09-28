@@ -15,13 +15,12 @@ class Context(object):
         self.bufferSize = self.config["cache"]["io"]["bufferSize"]
         self.cache = Cache(self.config["cache"]["redis"])
 
-    def createMaster(self):
-        return Master(self.config, self.cache, self.bufferSize)
-
-    def createClient(self):
-        return Client(self.config, self.cache, self.bufferSize)
+        if master:
+            self.master = Master(self.config, self.cache, self.bufferSize)
+        else:
+            self.client = Client(self.config, self.cache, self.bufferSize)
 
     def dataSet(self, *args, **kwargs):
-        return DataSet(self, *args, **kwargs)
+        return DataSetProxy(self, client=self.client, *args, **kwargs)
 
 
