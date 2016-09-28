@@ -126,7 +126,7 @@ class DataSet(object):
             buf = self.cache.get(self.currentDsLabel, k)
             self.profiler.add("collectCache", cacheTimer.since())
 
-            res.extend(buf)
+            res.extend(pickle.loads(buf))
 
         self.profiler.add("collectMaster", localTimer.since())
 

@@ -40,10 +40,28 @@ class DataSetProxy(object):
 
 
     def map(self, fn):
-        return self.client.send({ "id": self.id, "method": "map", "data": fn })
+        self.client.send({ "id": self.id, "method": "map", "data": fn })
+        return self
+
+    def flatMap(self, fn):
+        self.client.send({ "id": self.id, "method": "flatMap", "data": fn })
+        return self
+
+    def filter(self, fn):
+        self.client.send({ "id": self.id, "method": "filter", "data": fn })
+        return self
+
+    def reduce(self, fn):
+        self.client.send({ "id": self.id, "method": "reduce", "data": fn })
+        return self
+
+    def reduceByKey(self, fn):
+        self.client.send({ "id": self.id, "method": "reduceByKey", "data": fn })
+        return self
 
     def collect(self):
         return self.client.send({ "id": self.id, "method": "collect" })
 
     def compute(self):
-        return self.client.send({"id": self.id, "method": "compute"})
+        self.client.send({"id": self.id, "method": "compute"})
+        return self

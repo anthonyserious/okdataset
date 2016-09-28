@@ -20,8 +20,6 @@ class Context(object):
         if client:
             self.client = Client(self.config, self.cache, self.bufferSize)
 
-        print(self.client)
-
     def createMaster(self):
         return Master(self.config, self.cache, self.bufferSize)
 
