@@ -1,4 +1,7 @@
+#!/usr/bin/env python
+
 from okdataset.clist import ChainableList
+from okdataset.dataset import DataSet
 from okdataset.logger import Logger
 from okdataset.profiler import Profiler, Timer
 from okdataset.cache import Meta
@@ -18,6 +21,7 @@ class Master(ChainableList):
         self.config = config
         self.logger = Logger("master")
         self.meta = Meta(self.cache)
+        self.dataSets = {}
         
         localTimer = Timer()
         self.profiler = Profiler()
@@ -34,14 +38,21 @@ class Master(ChainableList):
         zmqTimer = Timer()
         context = zmq.Context()
 
+        # Sender
         self.sender = context.socket(zmq.PUSH)
-        self.sender.bind("tcp://*:" + str(self.config["cluster"]["send"]["port"]))
+        self.sender.bind("tcp://*:" + str(self.config["cluster"]["master"]["port"]))
         self.logger.debug("Initialized sender socket")
 
+        # Sink
         self.sink = context.socket(zmq.PULL)
         self.sink.bind("tcp://*:" + str(self.config["cluster"]["return"]["port"]))
         self.logger.debug("Initialized sink socket")
         
+        # Server
+        self.server = context.socket(zmq.REP)
+        self.server.bind("tcp://*:" + str(self.config["server"]["port"]))
+        self.logger.debug("Initialized server socket")
+
         self.profiler.add("localZmq", zmqTimer.since())
 
     def compute(self, label, intermediaryLabel, opsList):
@@ -101,10 +112,54 @@ class Master(ChainableList):
 
         return self
 
-
-    def getProfile(self, f=None):
-        if f:
-            f(self.profiler.toDict())
+    def getProfile(self, fn=None):
+        if fn:
+            fn(self.profiler.toDict())
         else:
             return self.profiler.toDict()
+
+    def mainLoop(self):
+        while True:
+            self.logger.debug("Receiving")
+            req = pickle.loads(self.server.recv())
+            data = req.get("data")
+
+            if req["method"] == "create":
+                self.logger.debug("create called for dataset %s, id %s" % (req["data"]["label"], req["id"]))
+                ds = DataSet(self.cache, self.config, data["clist"], label=data["label"], fromExisting=data["fromExisting"], bufferSize=data["bufferSize"])
+                print(ds.currentDsLabel)
+                self.dataSets[req["id"]] = ds
+                self.server.send(pickle_dumps({ "status": "ok" }))
+
+            elif req["method"] in [ "map", "flatMap", "reduce", "reduceByKey", "filter" ]:
+                ds = self.dataSets[req["id"]]
+                self.logger.debug("%s called for dataset %s, id %s" % (req["method"], ds.currentDsLabel, req["id"]))
+
+                getattr(ds, req["method"])(data)
+                self.server.send(pickle_dumps({ "status": "ok" }))
+
+            elif req["method"] == "collect":
+                ds = self.dataSets[req["id"]]
+                self.logger.debug("collect called for dataset %s, id %s" % (ds.currentDsLabel, req["id"]))
+
+                self.compute(ds.currentDsLabel, ds.createIntermediary(), ds.opsList)
+                res = ds.collect()
+                self.server.send(pickle_dumps({"status": "ok", "data": res}))
+
+            elif req["method"] == "compute":
+                ds = self.dataSets[req["id"]]
+                self.logger.debug("compute called for dataset %s, id %s" % (ds.currentDsLabel, req["id"]))
+
+                self.compute(ds.currentDsLabel, ds.createIntermediary(), ds.opsList)
+                self.server.send(pickle_dumps({ "status": "ok" }))
+
+
+
+
+
+
+
+
+
+
 

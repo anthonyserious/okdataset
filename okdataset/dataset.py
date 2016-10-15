@@ -13,10 +13,10 @@ import zmq
 """
 DataSet
 """
-class DataSet(object):
-    def __init__(self, context, clist=None, label=None, fromExisting=False, bufferSize=None):
-        self.context = context
-        self.cache = context.cache
+class DataSet(ChainableList):
+    def __init__(self, cache, config, clist=None, label=None, fromExisting=False, bufferSize=None):
+        self.cache = cache
+        self.config = config
         self.meta = Meta(self.cache)
         self.label = label if label else "okds_%s" % uuid.uuid1()
         self.opsList = []
@@ -40,7 +40,7 @@ class DataSet(object):
         if bufferSize is not None:
             self.bufferSize = bufferSize
         else:
-            self.bufferSize = self.context.config["cache"]["io"]["bufferSize"]
+            self.bufferSize = self.config["cache"]["io"]["bufferSize"]
 
         self.logger = Logger("dataset '" + self.label + "'")
 
@@ -73,9 +73,6 @@ class DataSet(object):
             self.logger.debug("Initialized with %d buffers" % self.buffers)
             self.logger.debug(json.dumps(self.profiler.toDict(), indent=2))
 
-    def compute(self):
-        self.context.master.compute(self.currentDsLabel, self.createIntermediary(), self.opsList)
-        return self
 
     def createIntermediary(self):
         prefix = self.label + "_intermediary_"
@@ -88,6 +85,10 @@ class DataSet(object):
         self.currentIsIntermediary = True
         
         return self.currentDsLabel
+
+    def flatMap(self, fn):
+        self.opsList.append({ "method": "flatMap", "fn": fn })
+        return self
 
     def map(self, fn):
         self.opsList.append({ "method": "map", "fn": fn })
@@ -102,22 +103,22 @@ class DataSet(object):
         return self.collect()
 
     # list items must be tuples of the form (key, ChainableList(values)) - like spark's LabeledPoint
-    def reduceByKey(self, f):
+    def reduceByKey(self, fn):
         res = ChainableList([])
         
         groups = ChainableList([ (key, ChainableList(group)) for key, group in groupby(sorted(self), lambda x: x[0]) ])\
             .map(lambda (key, items): (key, items.map(lambda x: x[1]))) 
         
         for key, values in groups:
-            res.append((key, reduce(f, values)))
+            self.logger.trace(values)
+            res.append((key, reduce(fn, values)))
         
         return res
 
     def collect(self):
         self.profiler = Profiler()
         localTimer = Timer()
- 
-        self.compute()
+
         res = ChainableList([])
 
         for k in sorted(self.cache.getKeys(self.currentDsLabel), key=lambda x: int(x)):
@@ -125,11 +126,7 @@ class DataSet(object):
             buf = self.cache.get(self.currentDsLabel, k)
             self.profiler.add("collectCache", cacheTimer.since())
 
-            pickleTimer = Timer()
-            buf = pickle.loads(buf)
-            self.profiler.add("collectPickle", pickleTimer.since())
-
-            res.extend(buf)
+            res.extend(pickle.loads(buf))
 
         self.profiler.add("collectMaster", localTimer.since())
 

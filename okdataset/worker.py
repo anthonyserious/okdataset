@@ -1,4 +1,4 @@
-from okdataset.cache import Cache, Meta
+from okdataset.cache import Meta
 from okdataset.logger import Logger
 from okdataset.profiler import Profiler, Timer
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
@@ -10,11 +10,10 @@ import zmq
 Worker
 """
 class Worker(object):
-    def __init__(self, config):
+    def __init__(self, config, cache):
         self.logger = Logger("worker")
         self.offsets = {}
-        
-        cache = Cache(config["cache"]["redis"])
+
         meta = Meta(cache)
 
         self.currentDestLabel = ""
@@ -25,7 +24,7 @@ class Worker(object):
         context = zmq.Context()
         
         receiver = context.socket(zmq.PULL)
-        receiver.connect("tcp://" + cluster["send"]["host"] + ":" + str(cluster["send"]["port"]))
+        receiver.connect("tcp://" + cluster["master"]["host"] + ":" + str(cluster["master"]["port"]))
         self.logger.debug("Initialized receiver socket")
 
         returner = context.socket(zmq.PUSH)
@@ -67,6 +66,17 @@ class Worker(object):
             
             self.logger.trace("Processed buffer")
 
+            reply = {
+                "destLabel": msg["destLabel"],
+                "offset": msg["offset"],
+                "status": "ok",
+                "profiler": profiler
+            }
+
+            # in case of flatMap
+            if len(res) != len(buf):
+                reply["size"] = len(res)
+
             pickleTimer = Timer()
             res = pickle_dumps(res)
             profiler.add("workerPickle", pickleTimer.since())
@@ -78,13 +88,6 @@ class Worker(object):
             self.logger.trace("Processed buffer")
 
             profiler.add("workerOverall", local.since())
-
-            reply = {
-              "destLabel": msg["destLabel"],
-              "offset": msg["offset"],
-              "status": "ok",
-              "profiler": profiler
-            }
 
             returner.send_pyobj(reply)
             self.logger.trace("Reply sent")
