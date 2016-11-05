@@ -3,3 +3,4 @@
 *.pyc
 okdataset.egg-info
 tmp
+.idea/
