@@ -1,0 +1,4 @@
+#!/bin/sh
+
+exec env PYTHONPATH=/okdataset:/pylibs:$PYTHONYPATH /okdataset/bin/server "$@"
+

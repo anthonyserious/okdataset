@@ -14,7 +14,7 @@ cluster:
 
 cache:
   redis:
-    host: localhost
+    host: redis
     port: 6379
   io:
     bufferSize: 10240

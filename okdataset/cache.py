@@ -1,13 +1,11 @@
 from cloud.serialization.cloudpickle import dumps as pickle_dumps
 import hiredis
 from okdataset.logger import Logger
-import pickle
-import redis
-
+import os, pickle, redis
 
 class Cache(object):
     def __init__(self, config):
-        self.r = redis.StrictRedis(host=config["host"], port=config["port"], db=0)
+        self.r = redis.StrictRedis(host=os.environ.get("REDIS_HOST", config["host"]), port=os.environ.get("REDIS_PORT", config["port"]), db=0)
 
     def pushBuffer(self, dsLabel, offset, buf):
         return self.r.hset(dsLabel, offset, buf)
