@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-from okdataset.clist import ChainableList
-from okdataset.context import Context
-from okdataset.logger import Logger
+from okdataset import ChainableList, Context, Logger
 
 logger = Logger("avg example")
 
