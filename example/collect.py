@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 
-from okdataset.clist import ChainableList
-from okdataset.context import Context
-from okdataset.dataset import DataSet
-from okdataset.logger import Logger
+from okdataset import ChainableList, Context, Logger
 
-logger = Logger("maparray example")
+logger = Logger("collect example")
 
 logger.info("Building big list")
 l = ChainableList([ x for x in xrange(0, 100) ])
 
-logger.info("Building dataset")
+logger.info("Creating context")
 context = Context()
+logger.info("Building dataset")
 ds = context.dataSet(l, bufferSize=1)
 
 a = 1
 logger.info("Calling map")
-ds.map(lambda x: x * 2 + a)
+ds.map(lambda x: x * 2 + 1)
 
 res = ds.collect()
 print res

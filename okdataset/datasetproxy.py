@@ -52,8 +52,7 @@ class DataSetProxy(object):
         return self
 
     def reduce(self, fn):
-        self.client.send({ "id": self.id, "method": "reduce", "data": fn })
-        return self
+        return self.client.send({ "id": self.id, "method": "reduce", "data": fn })
 
     def reduceByKey(self, fn):
         self.client.send({ "id": self.id, "method": "reduceByKey", "data": fn })

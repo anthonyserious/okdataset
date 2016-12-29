@@ -101,9 +101,10 @@ class DataSet(ChainableList):
         self.opsList.append({ "method": "filter", "fn": fn })
         return self
 
-    def reduce(self, fn):
-        self.opsList.append({ "method": "reduce", "fn": fn })
-        return self.collect()
+    # XXX No distributed implementation yet.
+    #def reduce(self, fn):
+    #    self.opsList.append({ "method": "reduce", "fn": fn })
+    #    return self.collect()
 
     # list items must be tuples of the form (key, ChainableList(values)) - like spark's LabeledPoint
     def reduceByKey(self, fn):

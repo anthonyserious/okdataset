@@ -131,19 +131,23 @@ class Master(ChainableList):
                 self.dataSets[req["id"]] = ds
                 self.server.send(pickle_dumps({ "status": "ok" }))
 
-            elif req["method"] in [ "map", "flatMap", "reduce", "reduceByKey", "filter" ]:
+            elif req["method"] in [ "map", "flatMap", "reduceByKey", "filter" ]:
                 ds = self.dataSets[req["id"]]
                 self.logger.debug("%s called for dataset %s, id %s" % (req["method"], ds.currentDsLabel, req["id"]))
 
                 getattr(ds, req["method"])(data)
                 self.server.send(pickle_dumps({ "status": "ok" }))
 
-            elif req["method"] == "collect":
+            elif req["method"] in [ "collect", "reduce" ]:
                 ds = self.dataSets[req["id"]]
-                self.logger.debug("collect called for dataset %s, id %s" % (ds.currentDsLabel, req["id"]))
+                self.logger.debug("%s called for dataset %s, id %s" % (req["method"], ds.currentDsLabel, req["id"]))
 
                 self.compute(ds.currentDsLabel, ds.createIntermediary(), ds.opsList)
                 res = ds.collect()
+
+                if req["method"] == "reduce":
+                    res = res.reduce(data)
+
                 self.server.send(pickle_dumps({"status": "ok", "data": res}))
 
             elif req["method"] == "compute":
@@ -153,7 +157,8 @@ class Master(ChainableList):
                 self.compute(ds.currentDsLabel, ds.createIntermediary(), ds.opsList)
                 self.server.send(pickle_dumps({ "status": "ok" }))
 
-
+            else:
+                self.logger.debug("unknown method %s" % req["method"])
 
 
 
