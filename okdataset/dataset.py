@@ -34,6 +34,9 @@ class DataSet(ChainableList):
         if fromExisting and bufferSize is not None:
             raise ValueError("Cannot specify bufferSize for existing dataset")
 
+        if fromExisting and label is None:
+            raise ValueError("Must specify label for existing dataset")
+
         if clist is not None:
             self.dsLen = len(clist)
         
@@ -48,7 +51,7 @@ class DataSet(ChainableList):
         Store the current working dataset label.  This will change as new intermediary
         datasets are created.
         """
-        self.currentDsLabel = label
+        self.currentDsLabel = self.label
         self.currentIsIntermediary = False
 
         if fromExisting:
