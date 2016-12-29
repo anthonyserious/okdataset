@@ -29,8 +29,8 @@ print ds.reduce(lambda x, y: (x + y) / 2.)
 
 QuickStart (docker-compose)
 ===
-`docker-compose up -d` _# starts master, worker, and redis_
-`docker-compose scale worker=8`  _# scale workers_
+* `docker-compose up -d` _# starts master, worker, and redis_
+* `docker-compose scale worker=8`  _# scale workers_
 
 Architecture
 ===
