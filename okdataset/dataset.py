@@ -101,7 +101,7 @@ class DataSet(ChainableList):
         self.opsList.append({ "method": "filter", "fn": fn })
         return self
 
-    def reduce(self, f):
+    def reduce(self, fn):
         self.opsList.append({ "method": "reduce", "fn": fn })
         return self.collect()
 
