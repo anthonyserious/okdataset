@@ -5,10 +5,10 @@ server:
 
 cluster:
   master:
-    host: localhost
+    host: master
     port: 11249
   return:
-    host: localhost
+    host: master
     port: 10036
   workers: 8
 
