@@ -161,7 +161,12 @@ class Master(ChainableList):
                 self.logger.debug("unknown method %s" % req["method"])
 
 
+if __name__ == "__main__":
+    import doctest
+    from okdataset.mocks import Logger
+    import okdataset.mocks.zmq as zmq
 
+    doctest.testmod()
 
 
 
