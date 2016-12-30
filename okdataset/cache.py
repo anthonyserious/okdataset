@@ -22,6 +22,9 @@ class Cache(object):
     def getKeys(self, dsLabel):
         return self.r.hkeys(dsLabel)
 
+    def keys(self, label):
+        return self.r.keys(label)
+    
     def len(self, dsLabel):
         return self.r.hlen(dsLabel)
 
@@ -75,7 +78,9 @@ class Meta(object):
     def remove(self, dsLabel):
         self.logger.debug("Removing '%s'" % dsLabel)
         self.cache.hdel(self.label, dsLabel)
-        self.cache.delete(dsLabel)
+
+        for k in self.cache.keys(dsLabel + "*"):
+            self.cache.delete(dsLabel)
 
     def rename(self, label, newLabel):
         self.cache.hset(self.label, newLabel, self.cache.get(self.label, label))

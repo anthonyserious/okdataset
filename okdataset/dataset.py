@@ -55,8 +55,11 @@ class DataSet(ChainableList):
         self.currentIsIntermediary = False
 
         if fromExisting:
-            self.dsLen = self.cache.len(label)
+            self.dsLen = self.cache.len(self.label)
         else:
+            # remove existing
+            self.logger.debug("Removing existing")
+
             # Set total number of buffers
             self.buffers = self.dsLen / self.bufferSize
             self.buffers = self.buffers + 1 if self.dsLen % self.bufferSize > 0 else self.buffers
