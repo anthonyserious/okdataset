@@ -2,16 +2,16 @@
 
 from okdataset import ChainableList, Context, Logger
 
-logger = Logger("avg example")
+logger = Logger("sum example")
 
 context = Context()
-logger.info("Building big list")
+logger.info("Building list")
 l = ChainableList([ x for x in xrange(1, 30) ])
 
 logger.info("Building dataset")
-ds = context.dataSet(l, label="avg", bufferSize=1)
+ds = context.dataSet(l, label="sum", bufferSize=1)
 
 logger.info("Calling reduce")
-print ds.reduce(lambda x, y: (x + y) / 2.)
+print ds.reduce(lambda x, y: x + y)
 logger.info("All done!")
 
