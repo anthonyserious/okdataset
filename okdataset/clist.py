@@ -151,7 +151,7 @@ class ChainableList(list):
         return res
 
 if __name__ == "__main__":
-    import doctest
+    import doctest, sys
 
-    doctest.testmod()
+    sys.exit(doctest.testmod()[0])
 

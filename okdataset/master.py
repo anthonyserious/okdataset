@@ -16,6 +16,9 @@ import zmq
 Master
 """
 class Master(ChainableList):
+    """
+    Master is both the client-facing server process and also the grid controller.
+    """
     def __init__(self, config, cache, bufferSize):
         self.cache = cache
         self.config = config
@@ -162,14 +165,9 @@ class Master(ChainableList):
 
 
 if __name__ == "__main__":
-    import doctest
+    import doctest, sys
     from okdataset.mocks import Logger
     import okdataset.mocks.zmq as zmq
 
-    doctest.testmod()
-
-
-
-
-
+    sys.exit(doctest.testmod()[0])
 
